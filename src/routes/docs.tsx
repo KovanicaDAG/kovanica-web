@@ -150,7 +150,10 @@ function DocsBody() {
           <li>Faucet, tap-mint, reset, and empty-block mining stay off on the public explorer.</li>
           <li>
             Seed node: listen on TCP 9000, set <code className="font-mono text-fg">KOVANICA_PEERS=off</code> so it does
-            not dial itself. Clones use <code className="font-mono text-fg">KOVANICA_PEERS=explorer.kovanica.online:9000</code>.
+            not dial itself. Clones must dial a <strong className="text-fg">DNS-only</strong> hostname or the origin
+            IP — not <code className="font-mono text-fg">explorer.kovanica.online:9000</code> (Cloudflare does not
+            proxy 9000). Use <code className="font-mono text-fg">seed.kovanica.online:9000</code> once that A record
+            exists (grey cloud).
           </li>
         </ol>
         <pre className="mt-4 overflow-x-auto rounded-xl border border-border bg-surface p-4 font-mono text-xs leading-relaxed text-muted whitespace-pre-wrap">

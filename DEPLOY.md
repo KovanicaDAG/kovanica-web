@@ -8,7 +8,7 @@ Kovanica owns `127.0.0.1:3010` (web), `127.0.0.1:8080` (explorer HTTP),
 
 ---
 
-## Seed (already done 2026-08-21)
+## Seed
 
 Explorer listens on TCP 9000. Keep:
 
@@ -23,62 +23,46 @@ KOVANICA_POW=1
 KOVANICA_DATA=/root/kovanica-ledger/data
 ```
 
-**9000 must be open on the host firewall** or clones cannot join. Check:
+ufw `9000/tcp` is open. **That is not enough:** `explorer.kovanica.online` is
+Cloudflare-proxied (orange cloud). A clone that dials that hostname:9000 hits
+Cloudflare, not this box.
 
-```sh
-ss -tlnp | grep 9000
-ufw status | grep 9000 || true
-ufw allow 9000/tcp comment kovanica-p2p
+Publish a **DNS-only** (grey cloud) A record:
+
+```
+seed.kovanica.online  →  $(curl -s ifconfig.me)   # DNS only, proxy OFF
 ```
 
-Also open **9000/tcp** in the cloud panel (Contabo/Hetzner/security group) if
-one exists. Cloudflare does **not** proxy 9000.
+Clones:
+
+```
+KOVANICA_PEERS=seed.kovanica.online:9000
+```
+
+Until that record exists, use the origin IP: `KOVANICA_PEERS=<ip>:9000`.
 
 ---
 
 ## Ship UI (Telegram links gone)
 
-The last rsync failed because `npm run build` writes **`.vercel/output`**
-(App Builder / Vercel). The VPS process is a Node server on **3010** and
-needs **`.output/server/index.mjs`**.
+Do this **inside tmux** so an SSH drop does not kill the build. Reuse the
+existing `/tmp` clone — do **not** `npm ci` again (that is what dropped SSH).
 
 ```sh
-pm2 show kovanica-web
-ls -la /root/kovanica-web
-
-cd /tmp
-rm -rf kovanica-web-build
-git clone --depth 1 https://github.com/KovanicaDAG/kovanica-web.git kovanica-web-build
-cd kovanica-web-build
-npm ci
+tmux new -s kv || tmux attach -s kv
+cd /tmp/kovanica-web-build
+git fetch origin
+git reset --hard origin/main
 npm run build:vps
-
-test -f .output/server/index.mjs || { echo "missing .output/server/index.mjs"; exit 1; }
-
+test -f .output/server/index.mjs
 mkdir -p /root/kovanica-web/.output
 rsync -a --delete .output/ /root/kovanica-web/.output/
-
 pm2 delete kovanica-web
 cd /root/kovanica-web
 HOST=127.0.0.1 PORT=3010 pm2 start .output/server/index.mjs --name kovanica-web
 pm2 save
 ```
 
-Confirm:
+If `/tmp/kovanica-web-build` is missing, clone once then `npm ci` **inside tmux**.
 
-```sh
-curl -s http://127.0.0.1:3010/ | grep -E 'Telegram|coin.webp|Create wallet'
-curl -s https://kovanica.online/ | grep -E 'Telegram|t.me'
-```
-
-There must be **no** `t.me` / `Telegram Mini App`. Purge Cloudflare cache for
-`kovanica.online` if the old header still shows.
-
-Optional (kills the Telegram **bot process**, not required to clear the site):
-
-```sh
-pm2 stop kovanica-bot
-pm2 save
-```
-
-Do not start `ton-grid-bot`.
+Confirm no `t.me` on `https://kovanica.online`. Purge Cloudflare cache if needed.

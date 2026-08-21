@@ -120,10 +120,13 @@ Live CORS is closed — this app proxies it server-side.
   KOVANICA_MINE=0 KOVANICA_FAUCET=0 KOVANICA_ALLOW_RESET=0 \\
   KOVANICA_OPERATOR=0 KOVANICA_POW=1 \\
   KOVANICA_LISTEN=0.0.0.0:9000 \\
-  KOVANICA_PEERS=explorer.kovanica.online:9000 \\
+  KOVANICA_PEERS=seed.kovanica.online:9000 \\
   ./target/release/kovanica-node explorer 127.0.0.1:8080
 
-TCP :9000 is the only P2P path. After sync, GET /api/head on the clone matches
-the public genesis (and tip, once the seed has served its blocks).
+TCP :9000 is the only P2P path. Do not set peers to explorer.kovanica.online:9000
+— that name is Cloudflare-proxied and never reaches the seed. Use a DNS-only
+A record (seed.kovanica.online) or the origin IP.
+After sync, GET /api/head on the clone matches the public genesis (and tip, once
+the seed has served its blocks).
 `;
 

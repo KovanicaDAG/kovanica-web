@@ -101,7 +101,7 @@ function DocsBody() {
           <Fact k="Subsidy" v={`${SUBSIDY / ATOM} KVNC, half / ${HALVING_ERA}`} />
           <Fact k="Min fee" v={`${MIN_FEE} atoms (burned)`} />
           <Fact k="GHOSTDAG k" v={String(K)} />
-          <Fact k="P2P" v="TCP :9000 · explorer.kovanica.online:9000" />
+          <Fact k="P2P" v="TCP :9000 · seed.kovanica.online:9000" />
         </dl>
       </section>
 

@@ -262,7 +262,7 @@ export function localP2p(): { path: string; listen: string; peers: string[]; boo
     path: "tcp",
     listen: "preview",
     peers: [],
-    bootstrap: "explorer.kovanica.online:9000",
+    bootstrap: "seed.kovanica.online:9000",
   };
 }
 

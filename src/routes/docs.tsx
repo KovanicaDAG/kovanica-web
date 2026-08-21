@@ -28,6 +28,8 @@ function DocsPage() {
 const ROWS = [
   { method: "GET", path: "/api/head", note: "genesis, tip, height" },
   { method: "GET", path: "/api/bootstrap", note: "plus listen, peers, upstream probe" },
+  { method: "GET", path: "/api/p2p", note: "TCP listen + bootstrap peers" },
+  { method: "GET", path: "/api/blocks", note: "octet-stream dump (clone catch-up)" },
   { method: "GET", path: "/api/state", note: "full DAG + flags" },
   { method: "GET", path: "/api/utxos?address=", note: "spendable outputs" },
   { method: "GET", path: "/api/history?address=", note: "deltas per address" },
@@ -99,7 +101,7 @@ function DocsBody() {
           <Fact k="Subsidy" v={`${SUBSIDY / ATOM} KVNC, half / ${HALVING_ERA}`} />
           <Fact k="Min fee" v={`${MIN_FEE} atoms (burned)`} />
           <Fact k="GHOSTDAG k" v={String(K)} />
-          <Fact k="P2P" v="TCP :9000 on the Rust node" />
+          <Fact k="P2P" v="TCP :9000 · explorer.kovanica.online:9000" />
         </dl>
       </section>
 

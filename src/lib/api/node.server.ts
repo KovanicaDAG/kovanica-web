@@ -1,3 +1,4 @@
+import { parseAddr } from "@/lib/wallet/address";
 import { hashHex } from "@/lib/ledger/hash";
 import {
   linearize,
@@ -116,7 +117,7 @@ function store(): Store {
 }
 
 function isAddr(s: string | null): s is string {
-  return !!s && /^[0-9a-f]{64}$/i.test(s);
+  return !!s && parseAddr(s) !== null;
 }
 
 function dagOf(blocks: Block[]): ApiDagBlock[] {
@@ -271,14 +272,16 @@ export function localBlocksDump(): string {
 }
 
 export function localPrepare(from: string | null, to: string | null, amountRaw: string | null): ApiPrepare | string {
-  if (!isAddr(from)) return "from address required";
-  if (!isAddr(to)) return "to address required";
+  const fromH = parseAddr(from ?? "");
+  const toH = parseAddr(to ?? "");
+  if (!fromH) return "from address required";
+  if (!toH) return "to address required";
   const amount = Number(amountRaw);
   if (!Number.isFinite(amount) || amount <= 0) return "amount required";
   const fee = MIN_FEE;
   const need = amount + fee;
   const owned = store()
-    .utxos.filter((u) => u.owner.toLowerCase() === from.toLowerCase())
+    .utxos.filter((u) => u.owner.toLowerCase() === fromH)
     .sort((a, b) => b.value - a.value);
   const picked: typeof owned = [];
   let total = 0;
@@ -290,7 +293,7 @@ export function localPrepare(from: string | null, to: string | null, amountRaw: 
   if (total < need) return "insufficient balance";
   const change = total - need;
   const sighash = hashHex(
-    `${from}|${to}|${amount}|${picked.map((u) => `${u.tx}:${u.index}`).join(",")}|${fee}`,
+    `${fromH}|${toH}|${amount}|${picked.map((u) => `${u.tx}:${u.index}`).join(",")}|${fee}`,
   );
   return {
     ok: true,

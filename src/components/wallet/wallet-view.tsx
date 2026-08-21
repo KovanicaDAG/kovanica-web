@@ -10,6 +10,7 @@ import { fmtKvnc, parseKvnc } from "@/lib/ledger/format";
 import { isRepeatedHex, shortId } from "@/lib/ledger/hash";
 import { useLedger } from "@/lib/ledger/store";
 import { addressFromMnemonic, createMnemonic, importMnemonic, signSighash } from "@/lib/wallet/keys";
+import { hexToKvnc, parseAddr } from "@/lib/wallet/address";
 import { creditPreview } from "@/lib/wallet/credit";
 import { useHydrated } from "@/lib/use-hydrated";
 import { cn } from "@/lib/utils";
@@ -127,7 +128,7 @@ export function WalletView() {
 
   async function onCopy() {
     if (!wallet) return;
-    await navigator.clipboard.writeText(wallet.address);
+    await navigator.clipboard.writeText(hexToKvnc(wallet.address));
     toast.success("Address copied");
   }
 
@@ -160,9 +161,9 @@ export function WalletView() {
       toast.error("Enter a positive amount");
       return;
     }
-    const dest = to.trim().toLowerCase();
-    if (!/^[0-9a-f]{64}$/.test(dest)) {
-      toast.error("Need a 64-hex address");
+    const dest = parseAddr(to);
+    if (!dest) {
+      toast.error("Need a kvnc…dag or 64-hex address");
       return;
     }
     const fee = 10_000;
@@ -278,9 +279,9 @@ export function WalletView() {
               })}
             </div>
           </div>
-          <AddressQr value={wallet.address} className="shrink-0" />
+          <AddressQr value={hexToKvnc(wallet.address)} className="shrink-0" />
         </div>
-        <p className="mt-3 font-mono text-xs leading-relaxed break-all text-fg">{wallet.address}</p>
+        <p className="mt-3 font-mono text-xs leading-relaxed break-all text-fg">{hexToKvnc(wallet.address)}</p>
         <div className="mt-3 flex flex-wrap gap-2">
           <Button type="button" variant="outline" className="h-11" onClick={() => void onCopy()}>
             <Copy className="size-3.5" />
@@ -331,7 +332,7 @@ export function WalletView() {
           <input
             value={to}
             onChange={(e) => setTo(e.target.value)}
-            placeholder="hex address"
+            placeholder="kvnc…dag"
             autoComplete="off"
             className="mt-1 h-11 w-full rounded-md border border-border bg-bg px-3 font-mono text-sm text-fg outline-none focus-visible:shadow-[var(--shadow-border-hover)]"
           />

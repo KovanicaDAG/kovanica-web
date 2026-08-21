@@ -12,6 +12,7 @@ import {
   tipsOf,
 } from "./engine";
 import { hashHex } from "./hash";
+import { parseAddr } from "@/lib/wallet/address";
 
 export type LedgerSnapshot = {
   blocks: Block[];
@@ -131,7 +132,7 @@ export const useLedger = create<LedgerSnapshot & Actions>()(
         const from = wallet.address;
         const have = balances[from] ?? 0;
         if (amountAtoms > have) return "Insufficient balance";
-        if (!/^[0-9a-f]{32,}$/i.test(to)) return "Need a hex address";
+        if (!parseAddr(to) && !/^[0-9a-f]{32,}$/i.test(to)) return "Need a kvnc…dag or hex address";
         const id = hashHex(`send:${from}:${to}:${amountAtoms}:${Date.now()}`);
         const tx: Tx = { id, coinbase: false, from, to, amount: amountAtoms };
         const parent = selectedTip(blocks);

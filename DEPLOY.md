@@ -39,10 +39,8 @@ nginx vhosts that are **not** this UI/node: `app.kovanica.online`,
 
 pm2 names to leave running: `dashboard-api`, `dashboard-ui`, `ecosystem.live*`,
 `kovanica-backend`, `live-worker`, `monitor-bot`, `trading-engine`.
-`ton-grid-bot` is already stopped.
-
-`pm2 kovanica-bot` is the old Telegram process — not this network. Do not
-point this app at it. Stop it only when you decide to.
+Stopped (do not start): `kovanica-bot` (old Telegram), `ton-grid-bot`.
+`bot.kovanica.online` is leftover nginx — not this network.
 
 ## Ship UI
 

@@ -1,15 +1,13 @@
-import { hashHex } from "@/lib/ledger/hash";
+import * as ed from "@noble/ed25519";
+import { sha256, sha512 } from "@noble/hashes/sha2.js";
+import { bytesToHex, hexToBytes, utf8ToBytes } from "@noble/hashes/utils.js";
+import { loadWordlist } from "./bip39";
 
-let wordsCache: string[] | null = null;
+ed.hashes.sha512 = sha512;
 
-export async function loadWordlist(): Promise<string[]> {
-  if (wordsCache) return wordsCache;
-  const t = await fetch("/bip39.txt").then((r) => r.text());
-  const words = t.trim().split(/\s+/);
-  if (words.length !== 2048) throw new Error("bip39 wordlist");
-  wordsCache = words;
-  return words;
-}
+const DOMAIN = "kovanica-wallet-v2";
+
+export { loadWordlist } from "./bip39";
 
 function entropyToMnemonic(entropy: Uint8Array, words: string[]): string {
   const bits: number[] = [];
@@ -33,8 +31,26 @@ export async function createMnemonic(): Promise<string> {
   return entropyToMnemonic(entropy, words);
 }
 
+export function normalizeMnemonic(phrase: string): string {
+  return phrase.normalize("NFKD").trim().toLowerCase().split(/\s+/).join(" ");
+}
+
+/** 32-byte ed25519 seed — same domain the address is derived from. */
+export function seedFromMnemonic(mnemonic: string, index = 0): Uint8Array {
+  return sha256(utf8ToBytes(`${normalizeMnemonic(mnemonic)}|${index}|${DOMAIN}`));
+}
+
+/** Address is the ed25519 public key (64 hex). Matches live `Address` bytes. */
 export async function addressFromMnemonic(mnemonic: string, index = 0): Promise<string> {
-  return hashHex(`${mnemonic.normalize("NFKD")}|${index}|kovanica-wallet-v1`);
+  return bytesToHex(ed.getPublicKey(seedFromMnemonic(mnemonic, index)));
+}
+
+/** Sign prepare's sighash bytes. Returns 128 hex (64-byte ed25519 sig). */
+export async function signSighash(mnemonic: string, index: number, sighashHex: string): Promise<string> {
+  const hex = sighashHex.trim().toLowerCase();
+  if (!/^[0-9a-f]+$/.test(hex) || hex.length % 2 !== 0) throw new Error("bad sighash");
+  const sig = ed.sign(hexToBytes(hex), seedFromMnemonic(mnemonic, index));
+  return bytesToHex(sig);
 }
 
 export async function importMnemonic(phrase: string): Promise<string> {

@@ -7,9 +7,9 @@ import { api, useApiSource } from "@/lib/api/client";
 import type { ApiHistory, ApiUtxos } from "@/lib/api/contract";
 import { ATOM } from "@/lib/ledger/types";
 import { fmtKvnc, parseKvnc } from "@/lib/ledger/format";
-import { hashHex, shortId } from "@/lib/ledger/hash";
+import { isRepeatedHex, shortId } from "@/lib/ledger/hash";
 import { useLedger } from "@/lib/ledger/store";
-import { addressFromMnemonic, createMnemonic, importMnemonic } from "@/lib/wallet/keys";
+import { addressFromMnemonic, createMnemonic, importMnemonic, signSighash } from "@/lib/wallet/keys";
 import { creditPreview } from "@/lib/wallet/credit";
 import { useHydrated } from "@/lib/use-hydrated";
 import { cn } from "@/lib/utils";
@@ -19,6 +19,7 @@ const ACCOUNTS = [0, 1, 2] as const;
 export function WalletView() {
   const hydrated = useHydrated();
   const source = useApiSource();
+  const live = source === "live";
   const walletStore = useLedger((s) => s.wallet);
   const wallet = hydrated ? walletStore : null;
   const setWallet = useLedger((s) => s.setWallet);
@@ -46,13 +47,23 @@ export function WalletView() {
   }
 
   useEffect(() => {
+    if (!walletStore) return;
+    if (!isRepeatedHex(walletStore.address)) return;
+    void addressFromMnemonic(walletStore.mnemonic, walletStore.index).then((address) => {
+      if (address !== walletStore.address) {
+        setWallet({ ...walletStore, address });
+      }
+    });
+  }, [walletStore, setWallet]);
+
+  useEffect(() => {
     if (!wallet) {
       setUtxos(null);
       setHist(null);
       return;
     }
     void (async () => {
-      await settlePendingTaps(wallet.address);
+      if (!live) await settlePendingTaps(wallet.address);
       await refreshChain(wallet.address);
     })();
   }, [wallet?.address, source]);
@@ -74,7 +85,7 @@ export function WalletView() {
     try {
       const mnemonic = await createMnemonic();
       const address = await addressFromMnemonic(mnemonic, 0);
-      await settlePendingTaps(address);
+      if (!live) await settlePendingTaps(address);
       setWallet({ mnemonic, address, index: 0, shown: true });
       toast.success("Wallet created — write down the 12 words");
     } catch (e) {
@@ -90,7 +101,7 @@ export function WalletView() {
     try {
       const mnemonic = await importMnemonic(phrase);
       const address = await addressFromMnemonic(mnemonic, 0);
-      await settlePendingTaps(address);
+      if (!live) await settlePendingTaps(address);
       setWallet({ mnemonic, address, index: 0, shown: false });
       setPhrase("");
       toast.success("Imported");
@@ -131,7 +142,7 @@ export function WalletView() {
   }
 
   async function onFaucet() {
-    if (!wallet) return;
+    if (!wallet || live) return;
     try {
       await api(`/api/faucet?to=${wallet.address}&amount=${ATOM}&kind=faucet`, "POST");
       await refreshChain(wallet.address);
@@ -149,13 +160,18 @@ export function WalletView() {
       toast.error("Enter a positive amount");
       return;
     }
-    const dest = to.trim();
+    const dest = to.trim().toLowerCase();
+    if (!/^[0-9a-f]{64}$/.test(dest)) {
+      toast.error("Need a 64-hex address");
+      return;
+    }
+    setBusy(true);
     try {
       const prep = await api<{ sighash: string }>(
         `/api/prepare?from=${wallet.address}&to=${dest}&amount=${atoms}`,
         "POST",
       );
-      const sig = hashHex(`${wallet.mnemonic}|${prep.sighash}`);
+      const sig = await signSighash(wallet.mnemonic, wallet.index, prep.sighash);
       const sub = await api<{ tx: string }>(
         `/api/submit?from=${wallet.address}&to=${dest}&amount=${atoms}&sig=${sig}`,
         "POST",
@@ -163,13 +179,15 @@ export function WalletView() {
       try {
         await api("/api/produce", "POST");
       } catch {
-        /* mempool may already be packed */
+        /* mempool may already be packed, or live operator is off */
       }
       await refreshChain(wallet.address);
       toast.success(`Sent · ${shortId(sub.tx)}`);
       setTo("");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Send failed");
+    } finally {
+      setBusy(false);
     }
   }
 
@@ -180,8 +198,8 @@ export function WalletView() {
           <p className="font-mono text-[10px] tracking-brand text-subtle uppercase">KVNC</p>
           <h1 className="font-display text-3xl tracking-tight text-fg">Wallet</h1>
           <p className="mt-2 text-sm leading-relaxed text-muted">
-            Keys stay in this browser. Create a 12-word seed or import one. Pending taps credit
-            account 0 on Preview. Then faucet, scan the QR, or send.
+            Keys stay in this browser. Create a 12-word seed or import one. Address is the
+            Ed25519 public key. Pending taps credit account 0 on Preview only.
           </p>
         </header>
         <Button type="button" className="h-12" disabled={busy} onClick={() => void onCreate()}>
@@ -204,11 +222,13 @@ export function WalletView() {
     );
   }
 
+  const history = live ? (hist?.txs.filter((row) => row.kind !== "tap") ?? []) : (hist?.txs ?? []);
+
   return (
     <div className="mx-auto flex w-full max-w-lg flex-col gap-6 px-4 py-6 md:px-6 md:py-8">
       <header className="flex items-start justify-between gap-3">
         <div>
-          <p className="font-mono text-[10px] tracking-brand text-subtle uppercase">Balance</p>
+          <p className="font-mono text-[10px] tracking-wide text-subtle uppercase">Balance</p>
           <p className="font-display text-4xl tabular-nums tracking-tight text-fg">{fmtKvnc(balance)}</p>
         </div>
         <Button
@@ -259,9 +279,13 @@ export function WalletView() {
             <Copy className="size-3.5" />
             Copy
           </Button>
-          <Button type="button" className="h-11" onClick={() => void onFaucet()}>
-            Faucet 1 KVNC
-          </Button>
+          {live ? (
+            <p className="self-center text-xs text-muted">Faucet is off on Live. Send signs Ed25519.</p>
+          ) : (
+            <Button type="button" className="h-11" onClick={() => void onFaucet()}>
+              Faucet 1 KVNC
+            </Button>
+          )}
         </div>
       </section>
 
@@ -314,18 +338,20 @@ export function WalletView() {
             className="mt-1 h-11 w-full rounded-md border border-border bg-bg px-3 font-mono text-sm text-fg outline-none focus-visible:shadow-[var(--shadow-border-hover)]"
           />
         </label>
-        <Button type="submit" className="h-12">
-          Send
+        <Button type="submit" className="h-12" disabled={busy}>
+          {busy ? "Sending…" : live ? "Sign & send on Live" : "Send"}
         </Button>
       </form>
 
       <section>
         <p className="mb-2 text-[10px] tracking-wide text-subtle uppercase">History</p>
-        {!hist || hist.txs.length === 0 ? (
-          <p className="text-sm text-muted">No movements yet. Tap the coin, use faucet, or send.</p>
+        {history.length === 0 ? (
+          <p className="text-sm text-muted">
+            {live ? "No movements on Live yet. Send after the seed is up." : "No movements yet. Tap the coin, use faucet, or send."}
+          </p>
         ) : (
           <ul className="divide-y divide-border rounded-xl border border-border">
-            {hist.txs.slice(-12).reverse().map((row) => (
+            {history.slice(-12).reverse().map((row) => (
               <li key={row.tx} className="flex items-baseline justify-between gap-3 px-4 py-3">
                 <span className="min-w-0">
                   <span className="block text-sm capitalize text-fg">{row.kind}</span>

@@ -144,10 +144,14 @@ function DocsBody() {
         <ol className="mt-3 list-decimal space-y-2 pl-5 text-sm leading-relaxed text-muted">
           <li>Flip the header to Live — reads already hit the public node through this app.</li>
           <li>
-            Sends need an Ed25519 signature over <code className="font-mono text-fg">sighash</code> from prepare.
-            Preview accepts any sig.
+            Sends need an Ed25519 signature (128 hex) over the <code className="font-mono text-fg">sighash</code> bytes
+            from prepare. The wallet does this for you. Preview and Live both verify 64-byte sigs.
           </li>
-          <li>Faucet, reset, and empty-block mining stay off on the public explorer.</li>
+          <li>Faucet, tap-mint, reset, and empty-block mining stay off on the public explorer.</li>
+          <li>
+            Seed node: listen on TCP 9000, set <code className="font-mono text-fg">KOVANICA_PEERS=off</code> so it does
+            not dial itself. Clones use <code className="font-mono text-fg">KOVANICA_PEERS=explorer.kovanica.online:9000</code>.
+          </li>
         </ol>
         <pre className="mt-4 overflow-x-auto rounded-xl border border-border bg-surface p-4 font-mono text-xs leading-relaxed text-muted whitespace-pre-wrap">
           {runNode}

@@ -106,7 +106,7 @@ function fresh(): Store {
 }
 
 const g = globalThis as typeof globalThis & { __kvnc?: Store; __kvncGen?: number };
-const STORE_GEN = 2;
+const STORE_GEN = 3;
 function store(): Store {
   if (!g.__kvnc || g.__kvncGen !== STORE_GEN) {
     g.__kvnc = fresh();
@@ -257,6 +257,19 @@ export function localOrigins(): ApiOrigins {
   };
 }
 
+export function localP2p(): { path: string; listen: string; peers: string[]; bootstrap: string } {
+  return {
+    path: "tcp",
+    listen: "preview",
+    peers: [],
+    bootstrap: "explorer.kovanica.online:9000",
+  };
+}
+
+export function localBlocksDump(): string {
+  return store().blocks.map((b) => b.id).join("\n");
+}
+
 export function localPrepare(from: string | null, to: string | null, amountRaw: string | null): ApiPrepare | string {
   if (!isAddr(from)) return "from address required";
   if (!isAddr(to)) return "to address required";
@@ -289,7 +302,7 @@ export function localSubmit(
 ): ApiSubmit | string {
   const prep = localPrepare(from, to, amountRaw);
   if (typeof prep === "string") return prep;
-  if (!sig || sig.length < 16) return "sig required";
+  if (!sig || !/^[0-9a-f]{128}$/i.test(sig)) return "sig must be 64 bytes";
   const id = hashHex(`pending:${prep.sighash}:${sig}:${Date.now()}`);
   store().pending.push({
     id,

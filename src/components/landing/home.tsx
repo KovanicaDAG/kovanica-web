@@ -7,11 +7,13 @@ import { fmtKvnc } from "@/lib/ledger/format";
 import { cn } from "@/lib/utils";
 import { useHydrated } from "@/lib/use-hydrated";
 import { inferOrigin } from "@/lib/geo/infer-origin";
-import { api } from "@/lib/api/client";
+import { api, useApiSource } from "@/lib/api/client";
 import { creditPreview } from "@/lib/wallet/credit";
 
 export function HomeLanding() {
   const hydrated = useHydrated();
+  const source = useApiSource();
+  const live = source === "live";
   const addTap = useLedger((s) => s.addTap);
   const tapsToday = useLedger((s) => s.tapsToday);
   const tapDay = useLedger((s) => s.tapDay);
@@ -103,7 +105,8 @@ export function HomeLanding() {
         </p>
         {remaining === 0 ? (
           <p className="mt-1 max-w-xs text-center text-xs text-subtle">
-            Daily taps used. Come back tomorrow — or faucet 1 KVNC in the wallet.
+            Daily taps used. Come back tomorrow
+            {live ? "." : " — or faucet 1 KVNC in the wallet."}
           </p>
         ) : null}
         {!shownWallet ? (
@@ -112,7 +115,9 @@ export function HomeLanding() {
           </p>
         ) : (
           <p className="mt-1 text-center text-xs text-subtle">
-            Each tap mints 0.01 KVNC to the active account on Preview.
+            {live
+              ? "Taps count here. Coins mint on Preview only — flip the header to Preview to credit the wallet."
+              : "Each tap mints 0.01 KVNC to the active account on Preview."}
           </p>
         )}
       </div>
@@ -140,7 +145,7 @@ export function HomeLanding() {
           to="/wallet"
           icon={Wallet}
           title="Wallet"
-          body="Create or import a seed, switch accounts 0–2, scan the QR, faucet 1 KVNC, send on Preview."
+          body="Create or import a seed, switch accounts 0–2, scan the QR. Faucet on Preview; Ed25519 send on Live."
         />
         <ProductCard
           to="/map"

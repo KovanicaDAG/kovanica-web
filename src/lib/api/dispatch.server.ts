@@ -1,5 +1,6 @@
 import { SPEC_TEXT } from "./spec";
 import {
+  localBlocksDump,
   localBootstrap,
   localFaucet,
   localHead,
@@ -9,6 +10,7 @@ import {
   localMining,
   localOrigin,
   localOrigins,
+  localP2p,
   localPrepare,
   localProduce,
   localReset,
@@ -76,8 +78,8 @@ export async function dispatchApi(req: Request): Promise<Response> {
   }
 
   if (sourceOf(req) === "live") {
-    if (name === "mine" || name === "origin" || name === "origins" || name === "spec") {
-      return text("not on live node", 404);
+    if (name === "mine" || name === "mining" || name === "miner" || name === "reset" || name === "faucet") {
+      return text("not on live node", 403);
     }
     return withCors(await fetchUpstream(`/api/${name}`, method, url.search));
   }
@@ -96,6 +98,15 @@ export async function dispatchApi(req: Request): Promise<Response> {
         return okOrErr(localHistory(q.get("address") ?? ""));
       case "origins":
         return json(localOrigins());
+      case "p2p":
+        return json(localP2p());
+      case "blocks":
+        return withCors(
+          new Response(localBlocksDump(), {
+            status: 200,
+            headers: { "content-type": "application/octet-stream" },
+          }),
+        );
       default:
         return text("not found", 404);
     }

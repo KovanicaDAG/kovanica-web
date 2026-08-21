@@ -69,10 +69,10 @@ GET /api/blocks
 
 POST /api/prepare?from=&to=&amount=
   pick a covering UTXO; returns { sighash, value, fee, change, outpoint }
-  the node never sees the seed — sign sighash in the browser
+  the node never sees the seed — sign sighash bytes in the browser (Ed25519)
 
 POST /api/submit?from=&to=&amount=&sig=
-  queue the signed transfer in the mempool
+  queue the signed transfer. sig is 64-byte Ed25519 (128 hex) over sighash
 
 POST /api/produce
   pack mempool into a block (400 if empty)
@@ -87,13 +87,19 @@ POST /api/miner?addr=
   operator: set coinbase payee
 
 POST /api/faucet?to=&amount=&kind=
-  preview mint (live 403). kind=tap|faucet (default faucet)
+  preview mint (live 403). kind=tap|faucet (default faucet). kind=tap is Preview only.
 
 POST /api/reset
   preview only
 
 POST /api/origin?iso3=HRV
   pulse a country (ISO 3166-1 alpha-3)
+
+## Wallet
+
+Address = Ed25519 public key (64 hex), seed = SHA-256(mnemonic|index|kovanica-wallet-v2).
+Browser signs prepare's sighash; submit never receives the 12 words.
+Faucet and tap-mint stay off on the public explorer.
 
 ## Line RPC (Rust node stdin)
 

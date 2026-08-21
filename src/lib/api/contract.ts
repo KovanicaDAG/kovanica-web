@@ -132,6 +132,7 @@ export const WRITE_PATHS = [
   "submit",
   "produce",
   "faucet",
+  "tap",
   "mine",
   "miner",
   "mining",

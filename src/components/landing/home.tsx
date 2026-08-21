@@ -40,7 +40,7 @@ export function HomeLanding() {
     if (addr) {
       void creditPreview(addr, TAP_REWARD, "tap")
         .then((ok) => {
-          if (ok) claimTaps(TAP_REWARD);
+          if (ok && !live) claimTaps(TAP_REWARD);
         })
         .catch(() => undefined);
     }

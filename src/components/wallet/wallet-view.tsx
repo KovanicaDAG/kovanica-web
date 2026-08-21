@@ -272,7 +272,7 @@ export function WalletView() {
                       on ? "bg-surface text-fg shadow-border" : "text-muted hover:text-fg",
                     )}
                   >
-                    {i}
+                    {i === 0 ? "Acc 0" : i === 1 ? "Acc 1" : `Acc ${i}`}
                   </button>
                 );
               })}
@@ -287,7 +287,7 @@ export function WalletView() {
             Copy
           </Button>
           {live ? (
-            <p className="self-center text-xs text-muted">Faucet is off on Live. Send signs Ed25519.</p>
+            <p className="self-center text-xs text-muted">Home tap: 0.01 KVNC, 40/day. Send signs Ed25519.</p>
           ) : (
             <Button type="button" className="h-11" onClick={() => void onFaucet()}>
               Faucet 1 KVNC
@@ -338,12 +338,27 @@ export function WalletView() {
         </label>
         <label className="text-xs text-muted">
           Amount (KVNC)
-          <input
-            value={amount}
-            onChange={(e) => setAmount(e.target.value)}
-            inputMode="decimal"
-            className="mt-1 h-11 w-full rounded-md border border-border bg-bg px-3 font-mono text-sm text-fg outline-none focus-visible:shadow-[var(--shadow-border-hover)]"
-          />
+          <div className="mt-1 flex gap-2">
+            <input
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
+              inputMode="decimal"
+              className="h-11 min-w-0 flex-1 rounded-md border border-border bg-bg px-3 font-mono text-sm text-fg outline-none focus-visible:shadow-[var(--shadow-border-hover)]"
+            />
+            <Button
+              type="button"
+              variant="outline"
+              className="h-11 px-3"
+              disabled={busy || !utxos}
+              onClick={() => {
+                const fee = 10_000;
+                const v = Math.max(0, (utxos?.balance ?? 0) - fee) / ATOM;
+                setAmount(v.toFixed(8).replace(/\.?0+$/, "") || "0");
+              }}
+            >
+              Max
+            </Button>
+          </div>
         </label>
         <p className="text-[11px] text-muted">Fee 0.0001 KVNC. 50 KVNC sends spend two coinbases.</p>
         <Button type="submit" className="h-12" disabled={busy}>

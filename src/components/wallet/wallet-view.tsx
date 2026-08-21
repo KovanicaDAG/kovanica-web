@@ -165,6 +165,13 @@ export function WalletView() {
       toast.error("Need a 64-hex address");
       return;
     }
+    const fee = 10_000;
+    const spendable = utxos?.balance ?? 0;
+    if (spendable > 0 && atoms + fee > spendable) {
+      const maxSend = Math.max(0, spendable - fee) / ATOM;
+      toast.error(`Amount plus fee exceeds balance. Send at most ${maxSend} KVNC.`);
+      return;
+    }
     setBusy(true);
     try {
       const prep = await api<{ sighash: string }>(
@@ -338,6 +345,7 @@ export function WalletView() {
             className="mt-1 h-11 w-full rounded-md border border-border bg-bg px-3 font-mono text-sm text-fg outline-none focus-visible:shadow-[var(--shadow-border-hover)]"
           />
         </label>
+        <p className="text-[11px] text-muted">Fee 0.0001 KVNC. 50 KVNC sends spend two coinbases.</p>
         <Button type="submit" className="h-12" disabled={busy}>
           {busy ? "Sending…" : live ? "Sign & send on Live" : "Send"}
         </Button>

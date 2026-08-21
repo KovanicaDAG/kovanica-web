@@ -277,20 +277,28 @@ export function localPrepare(from: string | null, to: string | null, amountRaw: 
   if (!Number.isFinite(amount) || amount <= 0) return "amount required";
   const fee = MIN_FEE;
   const need = amount + fee;
-  const utxo = store()
+  const owned = store()
     .utxos.filter((u) => u.owner.toLowerCase() === from.toLowerCase())
-    .sort((a, b) => b.value - a.value)
-    .find((u) => u.value >= need);
-  if (!utxo) return "insufficient balance";
-  const change = utxo.value - need;
-  const sighash = hashHex(`${from}|${to}|${amount}|${utxo.tx}|${utxo.index}|${fee}`);
+    .sort((a, b) => b.value - a.value);
+  const picked: typeof owned = [];
+  let total = 0;
+  for (const u of owned) {
+    picked.push(u);
+    total += u.value;
+    if (total >= need) break;
+  }
+  if (total < need) return "insufficient balance";
+  const change = total - need;
+  const sighash = hashHex(
+    `${from}|${to}|${amount}|${picked.map((u) => `${u.tx}:${u.index}`).join(",")}|${fee}`,
+  );
   return {
     ok: true,
     sighash,
-    value: utxo.value,
+    value: total,
     fee,
     change,
-    outpoint: { tx: utxo.tx, index: utxo.index },
+    outpoint: { tx: picked[0].tx, index: picked[0].index },
   };
 }
 
